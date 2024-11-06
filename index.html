@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>US Road Trip Planner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 US Road Trip Planner</h1>
+        
+        <div class="section">
+            <h2>Trip Details</h2>
+            <input type="date" id="startDate" placeholder="Start Date">
+            <input type="number" id="duration" placeholder="Duration (days)">
+            <input type="number" id="totalBudget" placeholder="Total Budget ($)">
+        </div>
+
+        <div class="section">
+            <h2>Destinations</h2>
+            <div id="destinations">
+                <div class="destination">
+                    <input type="text" placeholder="Starting Point" class="dest-input">
+                </div>
+            </div>
+            <button onclick="addDestination()">+ Add Destination</button>
+        </div>
+
+        <div class="section">
+            <h2>Preferences</h2>
+            <select id="travelStyle">
+                <option value="">Select Travel Style</option>
+                <option value="luxury">Luxury</option>
+                <option value="comfort">Comfort</option>
+                <option value="budget">Budget</option>
+            </select>
+            <select id="pace">
+                <option value="">Select Travel Pace</option>
+                <option value="relaxed">Relaxed</option>
+                <option value="moderate">Moderate</option>
+                <option value="intense">Intense</option>
+            </select>
+        </div>
+
+        <button onclick="generatePlan()">Generate Trip Plan</button>
+
+        <div id="summary"></div>
+    </div>
+
+    <script>
+        function addDestination() {
+            const destDiv = document.createElement('div');
+            destDiv.className = 'destination';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'dest-input';
+            input.placeholder = 'Enter destination';
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-btn';
+            removeBtn.textContent = '✕';
+            removeBtn.onclick = function() {
+                destDiv.remove();
+            };
+            
+            destDiv.appendChild(input);
+            destDiv.appendChild(removeBtn);
+            document.getElementById('destinations').appendChild(destDiv);
+        }
+
+        function generatePlan() {
+            const startDate = document.getElementById('startDate').value;
+            const duration = document.getElementById('duration').value;
+            const budget = document.getElementById('totalBudget').value;
+            const style = document.getElementById('travelStyle').value;
+            const pace = document.getElementById('pace').value;
+            
+            const destinations = Array.from(document.getElementsByClassName('dest-input'))
+                .map(input => input.value)
+                .filter(val => val);
+
+            if (!startDate || !duration || !budget || !style || !pace || destinations.length < 2) {
+                alert('Please fill in all required fields and add at least two destinations.');
+                return;
+            }
+
+            // Calculate rough budget breakdown
+            const gasEstimate = Math.round(budget * 0.3);
+            const lodgingEstimate = Math.round(budget * 0.4);
+            const foodEstimate = Math.round(budget * 0.2);
+            const activitiesEstimate = Math.round(budget * 0.1);
+
+            // Generate daily distance based on pace
+            const paceDistances = {
+                relaxed: "200-300",
+                moderate: "300-400",
+                intense: "400-500"
+            };
+
+            const summary = `
+                <h2>Your Trip Summary</h2>
+                <p><strong>Start Date:</strong> ${startDate}</p>
+                <p><strong>Duration:</strong> ${duration} days</p>
+                <p><strong>Route:</strong> ${destinations.join(' → ')}</p>
+                <p><strong>Travel Style:</strong> ${style}</p>
+                <p><strong>Daily Distance (miles):</strong> ${paceDistances[pace]}</p>
+                
+                <h3>Budget Breakdown</h3>
+                <div class="budget-breakdown">
+                    <div class="budget-item">
+                        <span>Gas & Transportation:</span>
+                        <span>$${gasEstimate}</span>
+                    </div>
+                    <div class="budget-item">
+                        <span>Lodging:</span>
+                        <span>$${lodgingEstimate}</span>
+                    </div>
+                    <div class="budget-item">
+                        <span>Food & Dining:</span>
+                        <span>$${foodEstimate}</span>
+                    </div>
+                    <div class="budget-item">
+                        <span>Activities & Entertainment:</span>
+                        <span>$${activitiesEstimate}</span>
+                    </div>
+                </div>
+
+                <h3>Recommendations</h3>
+                <ul>
+                    <li>Book accommodations in advance, especially during peak season</li>
+                    <li>Plan for regular breaks every 2-3 hours of driving</li>
+                    <li>Get your vehicle checked before the trip</li>
+                    <li>Download offline maps for areas with potential poor connectivity</li>
+                </ul>
+            `;
+
+            document.getElementById('summary').innerHTML = summary;
+        }
+    </script>
+</body>
+</html>

@@ -58,9 +58,9 @@ setup_venv() {
 echo "Checking Python installation..."
 setup_venv
 
-echo "Creating model directory..."
-mkdir -p model
-cd model || exit 1
+echo "Creating models directory..."
+mkdir -p models
+cd models || exit 1
 
 echo "Downloading main.py..."
 if command_exists curl; then
@@ -101,8 +101,4 @@ echo "Installing required packages..."
 pip install --upgrade pip
 pip install pandas numpy scikit-learn
 
-echo "Running main.py..."
-python main.py
-
-
-echo "Run `deactivate` when done."
+echo "Run ./models/main.py to start"

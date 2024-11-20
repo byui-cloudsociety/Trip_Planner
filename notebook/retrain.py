@@ -1,4 +1,10 @@
+# pip install pandas transformers datasets
+
 import pandas as pd
+from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
+from datasets import load_dataset
+import json
+from transformers import pipeline
 
 # Load the CSV
 data = pd.read_csv("poiTrainingData.csv")
@@ -12,14 +18,13 @@ def preprocess_data(row):
 
 # Apply preprocessing
 training_data = data.apply(preprocess_data, axis=1).tolist()
-import json
+
 
 # Save as JSONL
 with open("training_data.jsonl", "w") as f:
     for item in training_data:
         f.write(json.dumps(item) + "\n")
-from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
-from datasets import load_dataset
+
 
 # Load a pre-trained model and tokenizer
 model_name = "gpt2"  # Replace with a preferred model
@@ -59,7 +64,7 @@ trainer.train()
 # Save the fine-tuned model
 model.save_pretrained("./fine_tuned_model")
 tokenizer.save_pretrained("./fine_tuned_model")
-from transformers import pipeline
+
 
 # Load the fine-tuned model
 model = AutoModelForCausalLM.from_pretrained("./fine_tuned_model")

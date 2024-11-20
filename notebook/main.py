@@ -1,3 +1,5 @@
+# pip install scipy scikit-learn torch torchvision pandas numpy
+
 from scipy.sparse import csr_matrix, hstack
 from sklearn.preprocessing import MultiLabelBinarizer
 import torch
@@ -93,7 +95,7 @@ def main():
     dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
     
 
-    input_size = dataset.feature_matrix.shape[1]
+    input_size = dataset.feature_matrix.shape[1]    
     hidden_size = 128
     output_size = len(dataset)
     model = RecommendationModel(input_size, hidden_size, output_size)

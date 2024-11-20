@@ -101,4 +101,5 @@ echo "Installing required packages..."
 pip install --upgrade pip
 pip install pandas numpy scikit-learn
 
+chmod +x main.py
 echo "Run ./models/main.py to start"

@@ -1,117 +1,95 @@
-# pip install scipy scikit-learn torch torchvision pandas numpy
-
-from scipy.sparse import csr_matrix, hstack
-from sklearn.preprocessing import MultiLabelBinarizer
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+# pip install pandas numpy scikit-learn
 import pandas as pd
 import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+# pain :(
+import re 
 
+# Big recommender energy
+class POIRecommender:
+    def __init__(self):
 
-class POIDataset(Dataset):
-    def __init__(self, csv_file):
-        self.data = pd.read_csv(csv_file)
+        # void
+        self.df = None
+        self.tfidfMatrix = None
+        self.vectorizer = None
         
-    
-        self.data['categories'] = self.data['categories'].apply(lambda x: x.split(';') if pd.notnull(x) else [])
+    def clean_categories(self, categories):
+        if isinstance(categories, str):
+            # clean stuff
+            categories = categories.replace('"', '').replace('[', '').replace(']', '')
+            # split stuff
+            categories = categories.split(';') if ';' in categories else [categories]
+            # strip spaces, lowercase it, keep it together (unlike my life)
+            categories = [cat.strip().lower() for cat in categories]
+            return ' '.join(categories) # superglue
+        return ''
         
-    
-        self.category_encoder = MultiLabelBinarizer(sparse_output=True)
-        category_features = self.category_encoder.fit_transform(self.data['categories'])
+    def train(self, csv_path):
+        # read csv, error checking is for babies
+        self.df = pd.read_csv(csv_path)
+
+        # create a new column for 'processed_categories'
+        self.df['processed_categories'] = self.df['categories'].apply(self.clean_categories)
+
+        # I have no clue what is going on
+        self.vectorizer = TfidfVectorizer(stop_words='english')
+        self.tfidfMatrix = self.vectorizer.fit_transform(self.df['processed_categories'])
         
-    
-        lat_lon_features = csr_matrix(self.data[['latitude_radian', 'longitude_radian']].values)
-        
-    
-        self.feature_matrix = hstack([lat_lon_features, category_features], format='csr')
+        print(f"Model trained on {len(self.df)} points of interest") # yay?
 
-    def __len__(self):
-        return self.feature_matrix.shape[0]
-    
-    def __getitem__(self, idx):
-        features = torch.tensor(self.feature_matrix[idx].toarray().flatten(), dtype=torch.float32)
-        label = self.data.iloc[idx]['name']
-        return features, label
+    def get_recommendations(self, interests, n_recommendations=5):
 
+        # stop if u didn’t train first. pls
+        if self.tfidfMatrix is None:
+            raise ValueError("Model needs to be trained dumb dumb")
 
-class RecommendationModel(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(RecommendationModel, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_size, output_size)
+        # clean user garbage
+        interests = self.clean_categories(interests)
 
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu(x)
-        return self.fc2(x)
+        # make it a vector
+        interest_vector = self.vectorizer.transform([interests])
 
+        # calculate similarity aka how close is this thing to ur random words
+        similarity_scores = cosine_similarity(interest_vector, self.tfidfMatrix)
 
-def train_model(model, dataloader, optimizer, criterion, num_epochs=10):
-    for epoch in range(num_epochs):
-        for inputs, labels in dataloader:
-            optimizer.zero_grad()
+        # sort scores, highest first
+        top_indices = similarity_scores[0].argsort()[-n_recommendations:][::-1]
+
+        # tell the user how to live their life
+        recommendations = []
+        for idx in top_indices:
+            poi = self.df.iloc[idx]
+            recommendations.append({
+                'name': poi['name'], 
+                'categories': poi['categories'],
+                'similarity_score': similarity_scores[0][idx],
+                'latitude': poi['latitude_radian'],
+                'longitude': poi['longitude_radian']
+            })
             
-        
-            outputs = model(inputs) 
-            
-        
-            target_indices = torch.arange(len(labels)) 
-            
-        
-            loss = criterion(outputs, target_indices)
-            
-        
-            loss.backward()
-            optimizer.step()
-        print(f"Epoch {epoch + 1}, Loss: {loss.item():.4f}")
-
-
-
-def recommend(model, user_interests, category_encoder, poi_data, top_n=5):
-
-    interest_vector = category_encoder.transform([user_interests]).toarray()[0]
+        return recommendations
     
+    def print_recommendations(self, recommendations):
+        print("\nRecommended Points of Interest:")
+        print("-" * 50)
+        for i, rec in enumerate(recommendations, 1):
 
-    avg_lat_lon = np.mean(poi_data[['latitude_radian', 'longitude_radian']].values, axis=0)
-    user_input = np.hstack([avg_lat_lon, interest_vector])
-    user_input_tensor = torch.tensor(user_input, dtype=torch.float32)
-    
+            # output stuff
+            print(f"\n{i}. {rec['name']}")
+            print(f"Categories: {rec['categories']}")
+            print(f"Similarity Score: {rec['similarity_score']:.2f}")
+            print(f"Location: ({rec['latitude']:.6f}, {rec['longitude']:.6f})")
+            print("-" * 50)
 
-    with torch.no_grad():
-        recommendations = model(user_input_tensor.unsqueeze(0))
-    
-
-    top_indices = torch.argsort(recommendations[0], descending=True)[:top_n]
-    top_pois = poi_data.iloc[top_indices.numpy()]['name'].values
-    return top_pois
-
-
-def main():
-
-    dataset = POIDataset('poiTrainingData.csv')
-    dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
-    
-
-    input_size = dataset.feature_matrix.shape[1]    
-    hidden_size = 128
-    output_size = len(dataset)
-    model = RecommendationModel(input_size, hidden_size, output_size)
-    
-
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    
-
-    train_model(model, dataloader, optimizer, criterion)
-    
-
-    user_interests = ['ISLANDS OF TANZANIA', 'ZANZIBAR ARCHIPELAGO']
-    recommendations = recommend(model, user_interests, dataset.category_encoder, dataset.data)
-    print("Top recommendations:", recommendations)
-
-
+# everything explodes here
 if __name__ == "__main__":
-    main()
+    recommender = POIRecommender()
+
+    # rocky moment
+    recommender.train('poiTrainingData.csv')
+    # glaciers mountains nature
+    userInterests = input("User Interests = ")
+    recommendations = recommender.get_recommendations(userInterests, n_recommendations=3)
+    recommender.print_recommendations(recommendations)

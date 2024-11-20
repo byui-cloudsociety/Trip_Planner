@@ -104,5 +104,5 @@ pip install pandas numpy scikit-learn
 echo "Running main.py..."
 python main.py
 
-deactivate
-echo "Done"
+
+echo "Run `deactivate` when done."
